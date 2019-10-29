@@ -54,7 +54,7 @@ wepy.page({
     pages,
     isloading: false,
     isFailed: 0,
-    message: '正在登录. . .'
+    message: ''
   },
   computed: {
     ...mapState([
@@ -81,6 +81,7 @@ wepy.page({
   async onReady () {
     if (!this.$app.request.defaults.headers['x-access-token']) {
       try {
+        this.message = '正在登录. . .'
         this.isloading = true
         let user = await this.login()
         let resp = await this.$app.request.get('/miniapp/user/wx85bc67d6ee55272e/login?code=' + user.code)

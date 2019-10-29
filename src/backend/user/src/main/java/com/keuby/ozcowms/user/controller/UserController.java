@@ -3,12 +3,16 @@ package com.keuby.ozcowms.user.controller;
 import com.keuby.ozcowms.common.response.JsonResp;
 import com.keuby.ozcowms.user.domain.User;
 import com.keuby.ozcowms.user.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/user")
 public class UserController {
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final UserService userService;
 
@@ -60,9 +64,11 @@ public class UserController {
             if (userInDB == null) {
                 return JsonResp.error("create failed");
             }
+            logger.info("user created", userInDB);
             return JsonResp.ok(userInDB);
         } else {
             userService.setSessionKey(userInDB.getId(), user.getSessionKey());
+            logger.info("user session key updated", userInDB);
             return JsonResp.ok(userInDB);
         }
     }

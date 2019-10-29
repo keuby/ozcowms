@@ -10,6 +10,8 @@ import com.keuby.ozcowms.common.dto.UserDTO;
 import com.keuby.ozcowms.common.enums.UserStatus;
 import com.keuby.ozcowms.common.response.JsonResp;
 import me.chanjar.weixin.common.error.WxErrorException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +26,8 @@ import java.util.HashMap;
 public class WxMaUserController {
 
     private static final String accessToken = "Bearer NDE2OTYyNjk1NzQzNDJlYjk2ZmY3YzNkOGU3ODdhNWQ=";
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final MiniappService miniappService;
     private final UserService userService;
@@ -55,11 +59,12 @@ public class WxMaUserController {
             if (userResp.isOk()) {
                 JsonResp<String> authResp = gatewayService.auth(accessToken, userResp.getData().getId());
                 if (authResp.isOk()) {
+                    logger.info(userResp.getData().getOpenId() + " login");
                     return JsonResp.ok(authResp.getData());
                 }
-                return JsonResp.error("login failed, auth error");
+                return JsonResp.error("授权失败");
             }
-            return JsonResp.error("login failed, cannot set create user");
+            return JsonResp.error("登录失败, 用户中心异常");
         } catch (WxErrorException e) {
             return JsonResp.error(e.getError().getErrorMsg());
         }

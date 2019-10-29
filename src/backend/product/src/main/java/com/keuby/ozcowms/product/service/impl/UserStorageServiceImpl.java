@@ -55,7 +55,7 @@ public class UserStorageServiceImpl implements UserStorageService {
     @Override
     @Transactional
     public List<UserStorage> init(long userId, String category, String unitName) {
-        Optional<Unit> unit = unitRepository.findByNameAndTag(unitName, UnitRepository.COMMON_UNIT_TAG);
+        Optional<Unit> unit = unitRepository.findByNameAndTag(unitName, category);
         if (!unit.isPresent()) {
             throw new ServiceException("单位:" + unitName + " 不存在");
         }
