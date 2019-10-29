@@ -1,0 +1,190 @@
+<template>
+  <div class="cu-modal {{dialog.show ? 'show' : ''}}">
+    <div class="cu-dialog">
+      <div class="cu-bar bg-white justify-end">
+        <div class="content">{{dialog.title}}</div>
+        <div class="action" @tap="dialogCallback(false, $event)">
+          <text class="cuIcon-close text-red"></text>
+        </div>
+      </div>
+      <div class="padding-xl">
+        <view class="cu-form-group">
+          <view class="title">姓名</view>
+          <input v-model="dialog.data.name" placeholder="请输入姓名" />
+        </view>
+        <view class="cu-form-group">
+          <view class="title">电话</view>
+          <input v-model="dialog.data.phone" placeholder="请输入电话(可选)" />
+        </view>
+      </div>
+      <div class="cu-bar bg-white justify-end">
+        <div class="action">
+          <button class="cu-btn line-blue text-blue" @tap="dialogCallback(false)">取消</button>
+          <button class="cu-btn bg-blue margin-left" @tap="dialogCallback(true)">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="isloading" style="height: {{contentHeight}}px" class="page-wrap">
+    <div class="animation">
+      <div class="shape shape1"></div>
+      <div class="shape shape2"></div>
+      <div class="shape shape3"></div>
+      <div class="shape shape4"></div>
+    </div>
+  </div>
+  <block v-else>
+    <div class="cu-bar bg-white search">
+      <div @tap="showCreateContactDialog" class="action cu-item">
+        <text style="font-size: 44rpx;" class="cuIcon-roundadd line-blue"></text>
+      </div>
+      <div style="margin-left: 0;" class="search-form round">
+        <text class="cuIcon-search"></text>
+        <input type="text" v-model="searchInput" placeholder="请输入姓名或电话号码" confirm-type="search" />
+      </div>
+      <div class="action">
+        <button @tap="searchKey = searchInput, searchInput = ''" class="cu-btn bg-gradual-blue shadow-blur round">搜索</button>
+      </div>
+    </div>
+    <div v-if="!contactsNormalized.length" style="height: calc({{contentHeight}}px - 100rpx);" class="page-wrap">
+      <span class="margin-bottom">你还没有任何联系人</span>
+      <button @tap="showCreateContactDialog" class="cu-btn bg-blue">点击添加</button>
+    </div>
+    <div v-else style="height: calc({{contentHeight}}px - 100rpx); overflow:auto">
+      <block v-for="data in contactsNormalized" :key="data.tag">
+        <div class="padding-sm">{{data.tag}}</div>
+        <div v-for="contact in data.contacts" :key="contact.id" class="cu-list menu-avatar no-padding">
+          <div class="cu-item">
+            <div v-if="contact.avatar" class="cu-avatar lg round" style="background-image:url(https://ossweb-img.qq.com/images/lol/web201310/skin/big25002.jpg);"></div>
+            <div v-else class="cu-avatar round lg bg-gradual-blue">
+              <text class="cuIcon-people line-blue"></text>
+            </div>
+            <div class="content">
+              <div class="text-grey">{{contact.remark}}</div>
+              <div v-if="contact.phone" class="text-gray text-sm">电话: {{contact.phone}}</div>
+            </div>
+          </div>
+        </div>
+      </block>
+    </div>
+  </block>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+import { mapState, mapActions } from '@wepy/x'
+import store from '@/store'
+import pinyin from '@/utils/pinyin'
+import { defer, arrayPlain } from '@/utils/common'
+
+wepy.component({
+  store,
+  options: {
+    addGlobalClass: true,
+  },
+  data: {
+    isloading: false,
+    dialog: {
+      show: false,
+      title: '',
+      data: {
+        name: '',
+        phone: ''
+      }
+    },
+    searchKey: '',
+    searchInput: ''
+  },
+  computed: {
+    ...mapState([
+      'contentHeight',
+      'headerHeight',
+      'contacts'
+    ]),
+    contactsNormalized () {
+      if (!this.contacts || !this.contacts.length) return []
+      let contacts = this.contacts.filter(contact => 
+        this.searchKey ? 
+          (contact.remark && contact.remark.includes(this.searchKey))
+          || (contact.phone && contact.phone.includes(this.searchKey))
+        : true)
+      return contactsNormalize(contacts)
+    }
+  },
+  created () {
+    this.updateContacts({
+      loading: () => this.isloading = true
+    }).then(() => {
+      this.isloading && (this.isloading = false)
+    })
+  },
+  methods: {
+    ...mapActions(['updateContacts']),
+    showDialog (title, data = {}) {
+      this.dialog.title = title || ''
+      this.dialog.data.name = data.name || ''
+      this.dialog.data.phone = data.phone || ''
+      this.dialog.data.id = data.id || 0
+      this.dialog.show = true
+      this.dialog.defer = defer()
+      return this.dialog.defer.promise
+    },
+    dialogCallback (confirmed) {
+      let { resolve } = this.dialog.defer
+      this.dialog.show = false
+      confirmed ? resolve(true) : resolve(false)
+    },
+    async showCreateContactDialog () {
+      let confirm = await this.showDialog('添加联系人')
+      if (!confirm) return
+      this.createContact(this.dialog.data.name, this.dialog.data.phone)
+    },
+    async createContact (remark, phone) {
+      try {
+        this.isloading = true
+        let resp = await this.$app.request.post('/user-center/contacts', { remark, phone }, { json: false })
+        if (!resp.ok) {
+          wx.showToast({ icon: 'none', title: resp.msg })
+        }
+      } catch (_) {
+        wx.showModal({
+          content: '网络异常，添加联系人失败',
+          confirmText: '重试',
+          success: () => this.createContact(remark, phone)
+        })
+      } finally {
+        this.isloading = false
+      }
+      return await this.updateContacts({ force: true })
+    }
+  }
+})
+
+function contactsNormalize (data) {
+  let contactTemp = {}
+  for (let contact of data) {
+    let tag = getNameTag(contact.remark)
+    if (tag in contactTemp) {
+      contactTemp[tag].push(contact)
+    } else {
+      contactTemp[tag] = [contact]
+    }
+  }
+
+  let result = []
+  for (let tag in contactTemp) {
+    result.push({
+      tag: tag,
+      contacts: contactTemp[tag]
+    })
+  }
+  result.sort((d1, d2) => d1.tag.charCodeAt() - d2.tag.charCodeAt())
+  return result;
+}
+
+function getNameTag (name) {
+  let words = arrayPlain(pinyin(name))
+  if (!words || !words.length) return ''
+  return words[0].toUpperCase()
+}
+</script>

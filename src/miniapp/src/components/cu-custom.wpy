@@ -1,0 +1,45 @@
+<template>
+  <div id="header" class="cu-custom" :style="{ height: CustomBar + 'px' }">
+    <div class="cu-bar fixed bg-gradual-blue" :style="{ height: CustomBar + 'px', paddingTop: StatusBar + 'px' }">
+      <div class="action" @tap="backPage" v-if="isBack">
+      <text class="cuIcon-back"></text>
+      <text>返回</text>
+    </div>
+      <div class="content" :style="{ top: StatusBar + 'px' }">
+        <text v-if="title">{{title}}</text>
+        <slot v-else></slot>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+
+const app = getApp().$wepy
+const { StatusBar, CustomBar, Custom } = app.globalData
+
+wepy.component({
+  options: {
+    addGlobalClass: true
+  },
+  props: {
+    isBack: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: ''
+    }
+  },
+  data: { StatusBar, CustomBar, Custom },
+  methods: {
+    backPage() {
+      wx.navigateBack({
+        delta: 1
+      });
+    }
+  }
+})
+</script>

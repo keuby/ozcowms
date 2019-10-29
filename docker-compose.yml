@@ -1,0 +1,47 @@
+version: "2"
+services:
+  mysql-admin:
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      - PMA_HOST=${MYSQL_DB_HOST}
+    ports:
+      - 80:80
+    networks:
+      - ozcowms
+  user-center:
+    image: java:8
+    volumes:
+      - ./apps/user-${APP_VERSION}.jar:/root/user-${APP_VERSION}.jar
+    working_dir: /root
+    networks:
+      - ozcowms
+    entrypoint: java -Xms256M -Xmx256M -jar user-${APP_VERSION}.jar --db.host=${MYSQL_DB_HOST} --nacos.host=${NACOS_HOST}
+  product:
+    image: java:8
+    volumes:
+      - ./apps/product-${APP_VERSION}.jar:/root/product-${APP_VERSION}.jar
+    working_dir: /root
+    networks:
+      - ozcowms
+    entrypoint: java -Xms256M -Xmx256M -jar product-${APP_VERSION}.jar --db.host=${MYSQL_DB_HOST} --nacos.host=${NACOS_HOST}
+  miniapp:
+    image: java:8
+    volumes:
+      - ./apps/miniapp-${APP_VERSION}.jar:/root/miniapp-${APP_VERSION}.jar
+    working_dir: /root
+    networks:
+      - ozcowms
+    entrypoint: java -Xms256M -Xmx256M -jar miniapp-${APP_VERSION}.jar --nacos.host=${NACOS_HOST}
+  gateway:
+    image: java:8
+    volumes:
+      - ./apps/gateway-${APP_VERSION}.jar:/root/gateway-${APP_VERSION}.jar
+    ports:
+      - 8080:8080
+    working_dir: /root
+    networks:
+      - ozcowms
+    entrypoint: java -Xms256M -Xmx256M -jar gateway-${APP_VERSION}.jar --spring.redis.host=${REDIS_DB_HOST} --nacos.host=${NACOS_HOST}
+networks:
+  ozcowms:
+    driver: bridge

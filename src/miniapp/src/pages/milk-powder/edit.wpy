@@ -1,0 +1,252 @@
+<template>
+  <cu-custom ref="header" :title="title" :isBack="true"></cu-custom>
+  <div v-if="isloading" style="height: {{contentHeight + navHeight}}px" class="page-wrap">
+    <div class="animation">
+      <div class="shape shape1"></div>
+      <div class="shape shape2"></div>
+      <div class="shape shape3"></div>
+      <div class="shape shape4"></div>
+    </div>
+  </div>
+  <form v-else class="sm-border">
+    <!-- 奶粉种类 -->
+    <div class="statistics cu-bar bg-white">
+      <div class="action">
+        <div class="cu-capsule radius">
+          <text class="cuIcon-title line-blue"></text>
+        </div>
+        <text class="text-black margin-left-sm">奶粉种类</text>
+      </div>
+      <div class="action">
+        <text class="cuIcon-listfill"></text>
+      </div>
+    </div>
+    <div class="cu-list menu margin-top-sm">
+      <radio-group @change="typeChange" class="block">
+        <div v-for="storage in storages" :key="storage.id" class="cu-form-group">
+          <div class="title">{{storage.product.name}}</div>
+          <radio :value="storage.product.id" :checked="storage.product.id === productId" class="blue"></radio>
+        </div>
+      </radio-group>
+    </div>
+
+    <!-- 数量 -->
+    <div class="statistics cu-bar bg-white margin-top">
+      <div class="flex justify-between">
+        <div>
+          <div class="cu-capsule radius">
+            <text class="cuIcon-title line-blue"></text>
+          </div>
+          <text class="text-black margin-left-sm">数量</text>
+        </div>
+      </div>
+      <div class="action">
+        <div v-if="amountTitle">{{amountTitle}}: {{amount.descrition}}</div>
+        <text v-else class="cuIcon-listfill"></text>
+      </div>
+    </div>
+    <div class="cu-list menu margin-top-sm">
+      <div v-for="unit in units" :key="unit.id" class="cu-form-group">
+        <input @input="amountInput(unit.id, $event)" type="number" placeholder="0" />
+        <div class="title">{{unit.name}}</div>
+      </div>
+    </div>
+
+    <!-- 操作对象 -->
+    <div class="cu-list menu margin-top-sm">
+      <div class="cu-form-group">
+        <div class="title">{{operatorType}}</div>
+        <picker range-key="remark" v-model="contactIndex" :range="editContacts">
+          <div class="picker">
+            {{editContacts[contactIndex] ? editContacts[contactIndex].remark : '请选择(选填)'}}
+          </div>
+        </picker>
+      </div>
+      <div v-if="editContacts[contactIndex] && editContacts[contactIndex].id === -1" class="cu-form-group">
+        <input style="text-align: right;" v-model="operatorName" type="text" placeholder="请输入姓名" />
+      </div>
+    </div>
+
+    <!-- 备注 -->
+    <div class="statistics cu-bar bg-white margin-top">
+      <div class="action">
+        <text class="text-black margin-left-sm">备注</text>
+      </div>
+      <div class="action">
+        <text class="cuIcon-listfill"></text>
+      </div>
+    </div>
+    <div class="cu-list menu margin-top-sm">
+      <div class="cu-form-group">
+      <textarea v-model="remark" maxlength="-1" placeholder="请输入备注信息，选填"></textarea>
+      </div>
+    </div>
+
+    <div class="padding">
+      <button @tap="submit" class="cu-btn block bg-blue margin-tb-sm lg">确定</button>
+    </div>
+  </form>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+import store from '@/store'
+import { mapState, mapActions } from '@wepy/x'
+
+const manualInput = { id: -1, remark: '手动输入' }
+
+wepy.page({
+  store,
+  data: {
+    units: [],
+    title: '',
+    requestUrl: '',
+    operatorType: '',
+    contactIndex: -1,
+    operatorName: null,
+    productId: 0,
+    remark: '',
+    isloading: false,
+    amountTitle: '',
+    amountKey: ''
+  },
+  computed: {
+    ...mapState(['storages', 'contacts', 'contentHeight', 'navHeight', 'milkPowderUnits']),
+    editContacts () {
+      return this.contacts.concat([manualInput])
+    },
+    operatorId () {
+      if (this.contacts && this.contacts[this.contactIndex]) {
+        let id = this.contacts[this.contactIndex].id
+        return id === manualInput.id ? namountKeyull : id
+      }
+      return null
+    },
+    amount () {
+      let productId = this.productId
+      let storages = this.storages
+      if (!storages || storages.length <= 0) {
+        return { descrition: 0, count: 0 }
+      }
+      let storage = storages.find(storage => storage.product.id === productId)
+      if (!storage) {
+        return { descrition: 0, count: 0 }
+      } else {
+        let amount = storage[this.amountKey + 'Amount'] || {}
+        let messages = []
+        for (let key in amount) {
+          let count = amount[key]
+          if (!count) continue
+          messages.push(count)
+          messages.push(key)
+        }
+        return {
+          descrition: messages.join(' ') || 0,
+          count: storage[this.amountKey] || 0
+        }
+      }
+    }
+  },
+  onReady () {
+    if (this.storages && this.storages.length > 0) {
+      this.productId = this.storages[0].product.id
+    }
+  },
+  onLoad (options) {
+    let url = '/product/user-storage/'
+    switch (options.type) {
+      case 'total':
+        this.title = '添加奶粉总量'
+        this.requestUrl = url + 'total'
+        this.operatorType = '奶粉来自谁'
+        this.amountKey = 'total'
+        this.amountTitle = '总量'
+        break;
+      case 'staged':
+        this.title = '入库'
+        this.requestUrl = url + 'staged'
+        this.operatorType = '奶粉来自谁'
+        this.amountKey = 'unstaged'
+        this.amountTitle = '未入库'
+        break;
+      case 'sales':
+        this.title = '取货'
+        this.requestUrl = url + 'sales'
+        this.operatorType = '奶粉出售给谁'
+        this.amountKey = 'remain'
+        this.amountTitle = '库存'
+        break;
+      default:
+        break;
+    }
+    Promise.all([
+      this.updateContacts({ loading: () => this.isloading = true }),
+      this.initMilkPowderUnits({ loading: () => this.isloading = true }),
+    ]).then(() => {
+      this.isloading = false
+      this.units = this.milkPowderUnits.map(unit => ({
+        count: 0,
+        id: unit.id,
+        name: unit.name,
+        multiple: unit.multiple
+      }))
+    })
+  },
+  methods: {
+    ...mapActions(['updateStorages', 'loading', 'loaded', 'updateContacts', 'initMilkPowderUnits']),
+    typeChange(event) {
+      this.productId = Number(event.$wx.detail.value)
+    },
+    amountInput(id, event) {
+      let value = event.$wx.detail.value
+      let i = this.units.findIndex(unit => unit.id === id)
+      this.units[i].count = value
+    },
+    async submit () {
+      if (this.amountKey != 'total') {
+        let count = this.units.reduce((prev, next) => prev.count * prev.multiple + next.count * next.multiple)
+        if (this.amount.count < count) {
+          wx.showToast({ icon: 'none', title: this.amountTitle + '数量不足' })
+          return
+        }
+      }
+      try {
+        this.isloading = true
+        let resp = await this.$app.request.post(this.requestUrl, {
+          remark: this.remark,
+          productId: this.productId,
+          operatorId: this.operatorId,
+          operatorName: this.operatorName,
+          amounts: this.units.map(unit => ({
+            unitId: unit.id,
+            count: Number(unit.count)
+          }))
+        })
+        if (resp.ok) {
+          await this.updateStorages({ force: true })
+          this.$refs.header.backPage()
+        } else {
+          wx.showToast({ icon: 'none', title: resp.msg })
+        }
+      } catch (_) {
+        wx.showModal({
+          content: '网络异常，操作失败',
+          confirmText: '重试',
+          success: res => res.confirm ? this.submit() : this.$refs.header.backPage(),
+          fail: () => this.$refs.header.backPage()
+        })
+      } finally {
+        this.isloading = false
+      }
+    }
+  }
+})
+</script>
+
+<config>
+{
+  "usingComponents": {
+    "cu-custom": "~@/components/cu-custom"
+  }
+}
+</config>

@@ -1,0 +1,256 @@
+<template>
+  <cu-custom ref="header" :title="title" :isBack="true"></cu-custom>
+  <div class="details">
+    <div class="statistics cu-bar bg-white solid-bottom">
+      <div class="action">
+        <text>奶粉详情</text>
+      </div>
+      <div class="action">
+        <text class="cuIcon-listfill"></text>
+      </div>
+    </div>
+    <div class="cu-list menu sm-border card-menu margin-top-sm">
+      <div v-for="milkPowder in milkPowders" :key="milkPowder.name" class="cu-item">
+        <text class="text-black margin-left-sm">{{milkPowder.name}}</text>
+        <text class="text-grey margin-right-sm">{{milkPowder.amount}}</text>
+      </div>
+    </div>
+    <div class="statistics cu-bar bg-white solid-bottom margin-top">
+      <div class="action">
+        <text>操作日志</text>
+      </div>
+      <div class="action">
+        <text class="cuIcon-listfill"></text>
+      </div>
+    </div>
+  </div>
+  <div v-if="!isloading && isfailed" style="height: {{loadingHeight}}px" class="page-wrap offline">
+    <text class="cuIcon-wifi lg text-grey"></text>
+    <span class="margin-bottom">{{message}}</span>
+    <button @tap="initStorageTransaction" class="cu-btn bg-blue">重新获取</button>
+  </div>
+  <scroll-view v-else :scroll-y="true" style="height: {{loadingHeight}}px" @scrolltolower="loadNextPage">
+    <div class="cu-card case">
+      <div class="cu-item" v-for="transaction in transactions" :key="transaction.id">
+        <div v-if="transaction.type === 'TOTAL_ADD'" class="flex padding-xs align-center justify-end solid-bottom">
+          <text class="opt-icon cuIcon-calendar text-lg icon-lg round line-blue light"></text>
+          <text class="text-black text-lg margin-left-xs margin-right">添加总量</text>
+        </div>
+        <div v-else-if="transaction.type === 'STAGED_ADD'" class="flex padding-xs align-center justify-end solid-bottom">
+          <text class="opt-icon cuIcon-forward text-lg icon-lg round line-green light"></text>
+          <text class="text-black text-lg margin-left-xs margin-right">入库</text>
+        </div>
+        <div v-else class="flex padding-xs align-center justify-end solid-bottom">
+          <text class="opt-icon cuIcon-taoxiaopu text-lg icon-lg round line-yellow light"></text>
+          <text class="text-black text-lg margin-left-xs margin-right">取货</text>
+        </div>
+        <div v-if="transaction.name" class="flex padding-xs justify-between solid-top">
+          <text class="text-black margin-left">奶粉种类</text>
+          <text class="text-grey margin-right">{{transaction.name}}</text>
+        </div>
+        <div v-if="transaction.amount" class="flex padding-xs justify-between">
+          <text class="text-black margin-left">数量</text>
+          <text class="text-grey margin-right">{{transaction.amount}}</text>
+        </div>
+        <div v-if="transaction.contact"  class="flex padding-xs justify-between">
+          <text v-if="transaction.type === 'SALES'" class="text-black margin-left">取货人</text>
+          <text v-else class="text-black margin-left">奶粉来源</text>
+          <text class="text-grey margin-right">{{transaction.contact}}</text>
+        </div>
+        <div v-if="transaction.remark"  class="flex padding-xs justify-between">
+          <text class="text-black margin-left">备注</text>
+          <text class="text-grey margin-right">{{transaction.remark}}</text>
+        </div>
+        <div v-if="transaction.time"  class="flex padding-xs justify-between">
+          <text class="text-black margin-left">操作时间</text>
+          <text class="text-grey margin-right">{{transaction.time}}</text>
+        </div>
+      </div>
+    </div>
+  </scroll-view>
+  <div v-if="isloading" style="height: {{loadingHeight}}px" class="page-wrap">
+    <div class="animation">
+      <div class="shape shape1"></div>
+      <div class="shape shape2"></div>
+      <div class="shape shape3"></div>
+      <div class="shape shape4"></div>
+    </div>
+  </div>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+import store from '@/store'
+import { mapState, mapActions } from '@wepy/x'
+
+const typeMap = {
+  total: {
+    name: 'total',
+    optType: ['TOTAL_ADD'],
+    title: '奶粉总量',
+    field: 'totalAmount'
+  },
+  staged: {
+    name: 'staged',
+    optType: ['STAGED_ADD'],
+    title: '入库总量',
+    field: 'stagedAmount'
+  },
+  remain: {
+    name: 'remain',
+    optType: ['STAGED_ADD', 'SALES'],
+    title: '奶粉总量',
+    field: 'totalAmount'
+  },
+  sales: {
+    name: 'sales',
+    optType: ['SALES'],
+    title: '奶粉总量',
+    field: 'salesAmount'
+  },
+}
+
+wepy.page({
+  store,
+  data: {
+    title: '详情',
+    type: null,
+    transactions: [],
+    page: 0,
+    size: 5,
+    end: false,
+    isloading: false,
+    loadingHeight: 0,
+    isfailed: false,
+    message: ''
+  },
+  computed: {
+    ...mapState(['storages', 'contacts', 'contentHeight', 'navHeight']),
+    milkPowders () {
+      let type = this.type
+      let storages = this.storages || []
+      if (!storages.length || !type) return []
+      let mps = []
+      for (let storage of storages) {
+        mps.push({
+          name: storage.product.name,
+          amount: this.mapAmount(storage, type.field)
+        })
+      }
+      return mps
+    },
+    storageIds () {
+      let storages = this.storages || []
+      return storages.map(storage => storage.id)
+    }
+  },
+  onLoad (options) {
+    this.type = typeMap[options.type]
+    this.title = this.type.title
+    const query = this.$wx.createSelectorQuery()
+    query.select('.details').boundingClientRect()
+    query.exec(([details]) => {
+      this.loadingHeight = this.contentHeight - this.navHeight - details.height
+    })
+    this.updateContacts().then(() => {
+      return this.initStorageTransaction()
+    })
+  },
+  methods: {
+    ...mapActions(['updateContacts']),
+    mapAmount (storage, field) {
+      let amount = storage[field]
+      let messages = []
+      for (let key in amount) {
+        messages.push(amount[key])
+        messages.push(key)
+      }
+      return messages.join(' ') || '无'
+    },
+    async initStorageTransaction () {
+      try {
+        this.isloading = true
+        let { ok, msg, data: transactions } = await this.$app.request.get('/product/user-storage/transaction', {
+          storageIds: this.storageIds.join(','),
+          types: this.type.optType.join(','),
+          page: 1,
+          size: this.size
+        })
+        if (!ok) {
+          this.message = msg || '网络异常，获取操作日志失败'
+          this.isfailed = true;
+          return
+        }
+        this.transactions = this.mapTransactions(transactions)
+        this.page = 1
+        this.end = transactions.length < this.size
+        this.isfailed && (this.isfailed = false)
+      } catch (error) {
+        this.message = error.msg || '网络异常，获取操作日志失败'
+        this.isfailed = true
+      } finally {
+        this.isloading = false
+      }
+    },
+    async loadNextPage () {
+      if (this.end) return
+      try {
+        this.isloading = true
+        let { ok, msg, data: transactions } = await this.$app.request.get('/product/user-storage/transaction', {
+          storageIds: this.storageIds.join(','),
+          types: this.type.optType.join(','),
+          page: this.page + 1,
+          size: this.size
+        })
+        if (!ok) {
+          return wx.showToast({ icon: 'none', title: msg || '网络异常，获取操作日志失败' })
+        }
+        this.transactions = this.transactions.concat(this.mapTransactions(transactions))
+        this.page = this.page + 1
+        this.end = transactions.length < this.size
+      } catch({msg}) {
+        wx.showToast({ icon: 'none', title: msg || '网络异常，获取操作日志失败' })
+      } finally {
+        this.isloading = false
+      }
+    },
+    mapTransactions (transactions) {
+      return transactions.map(transaction => {
+        let contact = this.contacts.find(c => c.id === transaction.contactId)
+        return {
+          id: transaction.id,
+          amount: transaction.description,
+          type: transaction.operationType,
+          remark: transaction.remark,
+          time: transaction.createdTime.replace('-', '年').replace('-', '月').replace(' ', '日 '),
+          name: transaction.productName,
+          contact: contact && contact.remark
+        }
+      })
+    }
+  }
+})
+
+</script>
+
+<style lang="less">
+.opt-icon {
+  font-size: 32rpx;
+}
+
+.page-wrap {
+  opacity: .5;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+}
+</style>
+
+
+<config>
+{
+  "usingComponents": {
+    "cu-custom": "~@/components/cu-custom"
+  }
+}
+</config>

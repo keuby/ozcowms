@@ -1,0 +1,180 @@
+<template>
+  <div class="milk-powder">
+    <div class="statistics cu-bar bg-white solid-bottom">
+      <div class="action">
+        <div class="cu-capsule radius margin-right">
+          <div @tap="type='list'" class="cu-tag {{type==='list'?'bg':'line'}}-blue">
+            <text class="cuIcon-list text-lg"></text>
+          </div>
+          <!-- <div @tap="type='chart'" class="cu-tag {{type==='chart'?'bg':'line'}}-blue">
+            <text class="cuIcon-rank text-lg"></text>
+          </div> -->
+        </div>
+        <text>统计 - {{type==='list'?'列表':'图表'}}</text>
+      </div>
+      <div class="action">
+        <text class="cuIcon-listfill"></text>
+      </div>
+    </div>
+    <div v-if="type === 'list'" class="cu-list menu sm-border card-menu margin-top">
+      <div @tap="gotoDetailPage('total')" class="cu-item arrow">
+        <div class="content">
+          <text class="text-black">总量</text>
+          <text class="text-grey">{{total}}</text>
+        </div>
+      </div>
+      <div @tap="gotoDetailPage('staged')" class="cu-item arrow">
+        <div class="content">
+          <text class="text-black">已入库</text>
+          <text class="text-grey">{{staged}}</text>
+        </div>
+      </div>
+      <div @tap="gotoDetailPage('remain')" class="cu-item arrow">
+        <div class="content">
+          <text class="text-black">库存</text>
+          <text class="text-grey">{{remain}}</text>
+        </div>
+      </div>
+      <div @tap="gotoDetailPage('sales')" class="cu-item arrow">
+        <div class="content">
+          <text class="text-black">取货量</text>
+          <text class="text-grey">{{sales}}</text>
+        </div>
+      </div>
+    </div>
+    <div class="layer">
+      <div v-if="opened" @tap="gotoEditPage('total')" style="animation-delay: 0.3s;" class="btn-warp animation-slide-bottom margin-sm basis-sm shadow">
+        <text class="text-black margin-right">添加总量</text>
+        <text class="cuIcon-calendar icon-sm round line-blue light"></text>
+      </div>
+      <div v-if="opened" @tap="gotoEditPage('staged')" style="animation-delay: 0.2s;" class="btn-warp animation-slide-bottom margin-sm basis-sm shadow">
+        <text class="text-black margin-right">入库</text>
+        <text class="cuIcon-forward icon-sm round line-blue light"></text>
+      </div>
+      <div v-if="opened" @tap="gotoEditPage('sales')" style="animation-delay: 0.1s;" class="btn-warp animation-slide-bottom margin-sm basis-sm shadow">
+        <text class="text-black margin-right">取货</text>
+        <text class="cuIcon-taoxiaopu icon-sm round line-blue light"></text>
+      </div>
+      <div class="btn-warp">
+        <text @tap="opened=!opened" class="cuIcon-{{opened?'close':'add'}} icon-lg round bg-blue light"></text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+import store from '@/store'
+import { mapState, mapActions } from '@wepy/x'
+import config from '@/config'
+
+const PageType = {
+  CHART: 'chart',
+  LIST: 'list'
+}
+
+wepy.component({
+  store,
+  options: {
+    addGlobalClass: true,
+  },
+  data: {
+    type: PageType.LIST,
+    opened: false,
+    isloading: false
+  },
+  computed: {
+    ...mapState(['storages']),
+    total () { return this.mapAmount('totalAmount') || '无' },
+    staged () { return this.mapAmount('stagedAmount') || '无' },
+    remain () { return this.mapAmount('remainAmount') || '无' },
+    sales () { return this.mapAmount('salesAmount') || '无' }
+  },
+  methods: {
+    gotoEditPage (type) {
+      this.opened = false
+      let url = config.pages.milkPowderEdit + '?type=' + type
+      wx.navigateTo({ url })
+    },
+    gotoDetailPage (type) {
+      let url = config.pages.milkPowderDetail + '?type=' + type
+      wx.navigateTo({ url })
+    },
+    mergeAmount (amounts) {
+      let units = new Set()
+      let amountResult = {}
+      amounts.forEach(amount => {
+        for (let unit in amount) {
+          units.add(unit)
+        }
+      })
+      for (let unit of units) {
+        let count = 0
+        for (let amount of amounts) {
+          if (unit in amount) {
+            count += amount[unit]
+          }
+        }
+        amountResult[unit] = count
+      }
+
+      return amountResult
+    },
+    mapAmount (field) {
+      let storages = this.storages
+      if (!storages || storages.length <= 0) {
+        return ''
+      }
+      let amount = this.mergeAmount(storages.map(storage => storage[field]))
+      let messages = []
+      for (let key in amount) {
+        let count = amount[key]
+        if (!count) continue
+        messages.push(count)
+        messages.push(key)
+      }
+      return messages.join(' ')
+    }
+  }
+})
+</script>
+
+<style lang="less">
+.milk-powder {
+  position: relative;
+
+  .content :first-child {
+    display: inline-block;
+    width: 150rpx;
+  }
+} 
+.layer {
+  position: fixed;
+  bottom: 128rpx;
+  right: 80rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+
+  .btn-warp {
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin: 10rpx 0;
+
+    :first-child {
+      line-height: 75rpx;
+    }
+  }
+  
+  .icon-lg {
+    font-size: 75rpx;
+  }
+
+  .icon-sm {
+    font-size: 45rpx;
+    margin: 15rpx 15rpx;
+  }
+}
+</style>

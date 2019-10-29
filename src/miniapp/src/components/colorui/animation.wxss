@@ -1,0 +1,345 @@
+/* 
+  Animation 微动画  
+  基于ColorUI组建库的动画模块 by 文晓港 2019年3月26日19:52:28
+ */
+
+/* css 滤镜 控制黑白底色gif的 */
+.gif-black{  
+  mix-blend-mode: screen;  
+}
+.gif-white{  
+  mix-blend-mode: multiply; 
+}
+
+
+/* Animation css */
+[class*=animation-] {
+    animation-duration: .5s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both
+}
+
+.animation-fade {
+    animation-name: fade;
+    animation-duration: .8s;
+    animation-timing-function: linear
+}
+
+.animation-scale-up {
+    animation-name: scale-up
+}
+
+.animation-scale-down {
+    animation-name: scale-down
+}
+
+.animation-slide-top {
+    animation-name: slide-top
+}
+
+.animation-slide-bottom {
+    animation-name: slide-bottom
+}
+
+.animation-slide-left {
+    animation-name: slide-left
+}
+
+.animation-slide-right {
+    animation-name: slide-right
+}
+
+.animation-shake {
+    animation-name: shake
+}
+
+.animation-reverse {
+    animation-direction: reverse
+}
+
+@keyframes fade {
+    0% {
+        opacity: 0
+    }
+
+    100% {
+        opacity: 1
+    }
+}
+
+@keyframes scale-up {
+    0% {
+        opacity: 0;
+        transform: scale(.2)
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1)
+    }
+}
+
+@keyframes scale-down {
+    0% {
+        opacity: 0;
+        transform: scale(1.8)
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1)
+    }
+}
+
+@keyframes slide-top {
+    0% {
+        opacity: 0;
+        transform: translateY(-100%)
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+@keyframes slide-bottom {
+    0% {
+        opacity: 0;
+        transform: translateY(100%)
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0)
+    }
+
+    10% {
+        transform: translateX(-9px)
+    }
+
+    20% {
+        transform: translateX(8px)
+    }
+
+    30% {
+        transform: translateX(-7px)
+    }
+
+    40% {
+        transform: translateX(6px)
+    }
+
+    50% {
+        transform: translateX(-5px)
+    }
+
+    60% {
+        transform: translateX(4px)
+    }
+
+    70% {
+        transform: translateX(-3px)
+    }
+
+    80% {
+        transform: translateX(2px)
+    }
+
+    90% {
+        transform: translateX(-1px)
+    }
+}
+
+@keyframes slide-left {
+    0% {
+        opacity: 0;
+        transform: translateX(-100%)
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0)
+    }
+}
+
+@keyframes slide-right {
+    0% {
+        opacity: 0;
+        transform: translateX(100%)
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0)
+    }
+}
+
+.animation {
+    width: 30px;
+    height: 30px;
+    position: relative;
+    -webkit-animation: rotation 1s infinite;
+    animation: rotation 1s infinite;
+    -webkit-transform: rotate(10deg);
+    transform: rotate(10deg);
+}
+  
+.animation .shape {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+}
+  
+.animation .shape.shape1 {
+    left: 0;
+    background-color: #5C6BC0;
+}
+.animation .shape.shape2 {
+    right: 0;
+    background-color: #8BC34A;
+}
+.animation .shape.shape3 {
+    bottom: 0;
+    background-color: #FFB74D;
+}
+.animation .shape.shape4 {
+    bottom: 0;
+    right: 0;
+    background-color: #F44336;
+}
+@-webkit-keyframes rotation {
+    from {
+        -webkit-transform: rotate(0deg);
+                transform: rotate(0deg);
+    }
+    to {
+        -webkit-transform: rotate(360deg);
+                transform: rotate(360deg);
+    }
+  }
+  
+@keyframes rotation {
+    from {
+        -webkit-transform: rotate(0deg);
+                transform: rotate(0deg);
+    }
+    to {
+        -webkit-transform: rotate(360deg);
+                transform: rotate(360deg);
+    }
+}
+  
+.animation .shape1 {
+    -webkit-animation: animationshape1 0.5s ease 0s infinite alternate;
+            animation: animationshape1 0.5s ease 0s infinite alternate;
+}
+  
+@-webkit-keyframes animationshape1 {
+    from {
+        -webkit-transform: translate(0, 0);
+                transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(20px, 20px);
+                transform: translate(20px, 20px);
+    }
+  }
+  
+@keyframes animationshape1 {
+    from {
+        -webkit-transform: translate(0, 0);
+                transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(20px, 20px);
+                 transform: translate(20px, 20px);
+    }
+  }
+.animation .shape2 {
+    -webkit-animation: animationshape2 0.5s ease 0s infinite alternate;
+            animation: animationshape2 0.5s ease 0s infinite alternate;
+  }
+  
+@-webkit-keyframes animationshape2 {
+    from {
+        -webkit-transform: translate(0, 0);
+                transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(-20px, 20px);
+                transform: translate(-20px, 20px);
+    }
+}
+  
+@keyframes animationshape2 {
+    from {
+      -webkit-transform: translate(0, 0);
+              transform: translate(0, 0);
+    }
+    to {
+      -webkit-transform: translate(-20px, 20px);
+              transform: translate(-20px, 20px);
+    }
+  }
+.animation .shape3 {
+    -webkit-animation: animationshape3 0.5s ease 0s infinite alternate;
+            animation: animationshape3 0.5s ease 0s infinite alternate;
+}
+  
+@-webkit-keyframes animationshape3 {
+    from {
+      -webkit-transform: translate(0, 0);
+              transform: translate(0, 0);
+    }
+    to {
+      -webkit-transform: translate(20px, -20px);
+              transform: translate(20px, -20px);
+    }
+}
+  
+@keyframes animationshape3 {
+    from {
+        -webkit-transform: translate(0, 0);
+              transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(20px, -20px);
+                transform: translate(20px, -20px);
+    }
+}
+.animation .shape4 {
+    -webkit-animation: animationshape4 0.5s ease 0s infinite alternate;
+            animation: animationshape4 0.5s ease 0s infinite alternate;
+}
+  
+@-webkit-keyframes animationshape4 {
+    from {
+        -webkit-transform: translate(0, 0);
+                transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(-20px, -20px);
+                transform: translate(-20px, -20px);
+    }
+}
+  
+@keyframes animationshape4 {
+    from {
+        -webkit-transform: translate(0, 0);
+                transform: translate(0, 0);
+    }
+    to {
+        -webkit-transform: translate(-20px, -20px);
+                transform: translate(-20px, -20px);
+    }
+}

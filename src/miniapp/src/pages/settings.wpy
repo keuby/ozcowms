@@ -1,0 +1,14 @@
+<template>
+  <div>
+    <div :key="i" v-for="i in 50">settings {{i}}</div>
+  </div>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+
+wepy.component({
+  data: {
+  },
+})
+</script>

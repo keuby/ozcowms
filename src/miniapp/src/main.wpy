@@ -1,0 +1,145 @@
+<template>
+  <cu-custom ref="header" :title="title" :isBack="false"></cu-custom>
+  <div v-if="isloading" style="height: {{contentHeight + navHeight}}px" class="page-wrap">
+    <div class="loading-message">{{message}}</div>
+    <div class="animation">
+      <div class="shape shape1"></div>
+      <div class="shape shape2"></div>
+      <div class="shape shape3"></div>
+      <div class="shape shape4"></div>
+    </div>
+  </div>
+  <div v-else-if="isFailed" style="height: {{contentHeight + navHeight}}px" class="page-wrap offline">
+    <text class="cuIcon-wifi lg text-grey"></text>
+    <span class="margin-bottom">{{message}}</span>
+    <button v-if="isFailed === 1" @tap="$wx.onReady()" class="cu-btn bg-blue">重新登录</button>
+    <button v-if="isFailed === 2" @tap="fetchStoragesData" class="cu-btn bg-blue">重新加载</button>
+  </div>
+  <block v-else>
+    <milk-powder v-if="currentPage.name === 'milk-powder'"></milk-powder>
+    <friend v-if="currentPage.name === 'friend'"></friend>
+    <settings v-if="currentPage.name === 'settings'"></settings>
+    <div class="cu-tabbar-height"></div>
+    <div id="nav" class="cu-bar tabbar bg-white shadow foot">
+      <div :key="page.name" v-for="page in pages" class="action" @tap="switchTo(page)">
+        <block v-if="page.name === currentPage.name">
+          <div class="cuIcon-cu-image">
+            <text class="{{page.icon.active}} {{navClass.active}} sm"></text>
+          </div>
+          <div class="{{navClass.active}}">{{page.title}}</div>
+        </block>
+        <block v-else>
+          <div class="cuIcon-cu-image">
+            <text class="{{page.icon.disactive}} {{navClass.disactive}} sm"></text>
+          </div>
+          <div class="{{navClass.disactive}}">{{page.title}}</div>
+        </block>
+      </div>
+    </div>
+  </block>
+</template>
+
+<script>
+import wepy from '@wepy/core'
+import { mapState, mapMutations, mapActions } from '@wepy/x'
+import store from '@/store'
+import { mapWxApi } from '@/utils/common'
+import config from '@/config'
+
+const { class: navClass, pages } = config.nav
+wepy.page({
+  store,
+  data: {
+    navClass,
+    pages,
+    isloading: false,
+    isFailed: 0,
+    message: '正在登录. . .'
+  },
+  computed: {
+    ...mapState([
+      'title',
+      'currentPage',
+      'contentHeight',
+      'navHeight'
+    ])
+  },
+  onLoad () {
+    const query = this.$wx.createSelectorQuery()
+    query.select('#nav').boundingClientRect()
+    let component = this.$refs.header
+    component && query.in(component.$wx).select('#header').boundingClientRect()
+    query.exec(queryResult => {
+      let allHeight = wx.getSystemInfoSync().windowHeight
+      let others = queryResult.map(item => item ? item.height : 0)
+      this.setNavHeight(others[0])
+      this.setHeaderHeight(others[1])
+      let othersHeight = others.reduce((prev, current) => prev + current)
+      this.setContentHeight(allHeight - othersHeight)
+    })
+  },
+  async onReady () {
+    if (!this.$app.request.defaults.headers['x-access-token']) {
+      try {
+        this.isloading = true
+        let user = await this.login()
+        let resp = await this.$app.request.get('/miniapp/user/wx85bc67d6ee55272e/login?code=' + user.code)
+        if (!resp.ok) {
+          this.isloading = false
+          this.isFailed = 1
+          this.message = resp.msg || '网络异常，登录失败'
+          return
+        }
+        this.$app.request.defaults.headers['x-access-token'] = 'Bearer ' + resp.data
+      } catch (error) {
+        this.isloading = false
+        this.isFailed = 1
+        this.message = error.msg || '网络异常，登录失败'
+        return
+      }
+      await this.fetchStoragesData()
+      this.updateContacts()
+    }
+  },
+  methods: {
+    ...mapWxApi(['login']),
+    ...mapMutations([
+      'setCurrentPage',
+      'setContentHeight',
+      'setNavHeight',
+      'setHeaderHeight'
+    ]),
+    ...mapActions(['switchTo', 'updateStorages', 'updateContacts']),
+    async fetchStoragesData () {
+      try {
+        this.isloading || (this.isloading = true)
+        this.message = '正在加载仓库数据. . . '
+        await this.updateStorages()
+        this.isFailed && (this.isFailed = 0)
+      } catch (error) {
+        this.isFailed = 2
+        this.message = error.msg || '网络异常，加载仓库数据失败'
+      } finally {
+        this.isloading = false
+      }
+    }
+  }
+});
+</script>
+
+<style lang="less">
+::-webkit-scrollbar {
+  display: none;
+}
+</style>
+
+<config>
+{
+  "usingComponents": {
+    "cu-custom": "~@/components/cu-custom",
+    "milk-powder": "~@/pages/milk-powder",
+    "friend": "~@/pages/friend",
+    "settings": "~@/pages/settings"
+  }
+}
+</config>
