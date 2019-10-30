@@ -33,7 +33,9 @@ public class AuthHeaderFilter extends ZuulFilter {
         if ("/api/v1/user-center/user".equals(uri)) {
             throw new ZuulException("权限不足", 403, "");
         }
-        requestContext.addZuulRequestHeader("x-user-id", authentication.getName());
+        if (authentication != null) {
+            requestContext.addZuulRequestHeader("x-user-id", authentication.getName());
+        }
         return null;
     }
 }

@@ -2,7 +2,7 @@
   "name": "ozcowms",
   "version": "0.0.2",
   "description": "OZ COW marketing system",
-  "main": "weapp/app.js",
+  "main": "dist/app.js",
   "scripts": {
     "dev": "./node_modules/.bin/wepy build --watch",
     "build": "cross-env NODE_ENV=production ./node_modules/.bin/wepy build --no-cache",
@@ -10,18 +10,17 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "wepy": {
-    "module-a": false,
-    "./src/components/list": "./src/components/wepy-list.wpy"
+    "module-a": false
   },
-  "author": "Keuby",
+  "author": "lnfsink",
   "license": "MIT",
   "dependencies": {
     "@wepy/x": "^2.0.2",
-    "@wepy/core": "^2.0.0-alpha.8",
+    "@wepy/core": "^2.0.0-alpha.9",
     "miniprogram-slide-view": "0.0.3"
   },
   "devDependencies": {
-    "@wepy/cli": "^2.0.0-alpha.10",
+    "@wepy/cli": "^2.0.0-alpha.20",
     "@babel/core": "^7.1.0",
     "@babel/preset-env": "^7.1.0",
     "@wepy/babel-plugin-import-regenerator": "0.0.2",

@@ -1,3 +1,7 @@
-apps/**
-mysql/**
-redis/**
+dist
+docker/es7
+docker/grafana
+docker/mysql
+docker/redis
+docker/prometheus/data
+docker/nacos/nacos-logs

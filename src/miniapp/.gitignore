@@ -1,5 +1,4 @@
 node_modules
-dist
 weapp
-package-lock.json
+dist
 .DS_Store

@@ -9,6 +9,7 @@ module.exports = {
   },
   resolve: {
     alias: {
+      'header': path.join(__dirname, 'src/components/cu-custom'),
       '@': path.join(__dirname, 'src')
     },
     aliasFields: ['wepy', 'weapp'],

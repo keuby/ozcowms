@@ -1,58 +1,179 @@
 version: "2"
 services:
+  prometheus:
+    image: prom/prometheus:v2.13.1
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/prometheus/data:/prometheus
+    networks:
+      - ozcowms
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:6.4.3
+    ports:
+      - 3000:3000
+    volumes:
+      - ./docker/grafana/data:/var/lib/grafana
+      - ./docker/grafana/plugins:/var/lib/grafana/plugins
+      - ./docker/grafana/logs:/var/log/grafana
+    networks:
+      - ozcowms
+  nacos:
+    image: nacos/nacos-server:latest
+    container_name: ozcowms-nacos
+    environment:
+      - PREFER_HOST_MODE=hostname
+      - MODE=standalone
+      - JVM_XMS=256M
+      - JVM_XMX=256M
+      - JVM_XMN=128M
+    volumes:
+      - ./docker/nacos/nacos-logs/:/home/nacos/logs
+      - ./docker/nacos/custom.properties:/home/nacos/init.d/custom.properties
+    ports:
+      - 8848:8848
+    networks:
+      - ozcowms
+  elasticsearch:
+    image: elasticsearch:7.4.2
+    container_name: elasticsearch
+    environment:
+      - cluster.name=ozcowms-cluster
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./docker/es7:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - ozcowms
+  mysql:
+    image: mysql:5.7
+    container_name: ozcowms-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
+      - ./docker/mysql/logs:/var/log/mysql
+    ports:
+      - 3306:3306
+    networks:
+      - ozcowms
+  redis:
+    image: redis:5
+    container_name: ozcowms-redis
+    volumes:
+      - ./docker/redis:/data
+    entrypoint:
+      - 'redis-server'
+      - '--appendonly'
+      - 'yes'
+    ports:
+      - 6379:6379
+    networks:
+      - ozcowms
   zipkin:
-    image: openzipkin/zipkin:latest
+    image: openzipkin/zipkin:2
     container_name: ozcowms-zipkin
+    environment:
+      - "JAVA_OPTS=-Xms128M -Xmx128M"
+      - STORAGE_TYPE=elasticsearch
+      - ES_HOSTS=elasticsearch:9200
     ports:
       - 9411:9411
-    restart: on-failure
+    depends_on:
+      - elasticsearch
+    # restart: on-failure
+    networks:
+      - ozcowms
   mysql-admin:
-    image: phpmyadmin/phpmyadmin:latest
+    image: phpmyadmin/phpmyadmin:4.9
     container_name: ozcowms-mysql-admin
     environment:
       - PMA_HOST=${MYSQL_DB_HOST}
     ports:
       - 80:80
+    depends_on:
+      - mysql
     networks:
       - ozcowms
   user-center:
     image: java:8
     container_name: ozcowms-user-center
+    environment:
+      - DB_HOST=${MYSQL_DB_HOST}
+      - NACOS_HOST=${NACOS_HOST}
+      - ZIPKIN_URL=${ZIPKIN_URL}
     volumes:
-      - ./apps/user-${APP_VERSION}.jar:/root/user-${APP_VERSION}.jar
+      - ./dist/apps/user-${APP_VERSION}.jar:/root/user-${APP_VERSION}.jar
     working_dir: /root
+    depends_on:
+      - mysql
+      - zipkin
+      - nacos
     networks:
       - ozcowms
-    entrypoint: java -Xms256M -Xmx256M -jar user-${APP_VERSION}.jar --db.host=${MYSQL_DB_HOST} --nacos.host=${NACOS_HOST} --spring.zipkin.base-url=${ZIPKIN_HOST}
+    entrypoint: java -Xms128M -Xmx128M -jar user-${APP_VERSION}.jar
   product:
     image: java:8
     container_name: ozcowms-product
+    environment:
+      - DB_HOST=${MYSQL_DB_HOST}
+      - NACOS_HOST=${NACOS_HOST}
+      - ZIPKIN_URL=${ZIPKIN_URL}
     volumes:
-      - ./apps/product-${APP_VERSION}.jar:/root/product-${APP_VERSION}.jar
+      - ./dist/apps/product-${APP_VERSION}.jar:/root/product-${APP_VERSION}.jar
     working_dir: /root
+    depends_on:
+      - mysql
+      - zipkin
+      - nacos
     networks:
       - ozcowms
-    entrypoint: java -Xms256M -Xmx256M -jar product-${APP_VERSION}.jar --db.host=${MYSQL_DB_HOST} --nacos.host=${NACOS_HOST} --spring.zipkin.base-url=${ZIPKIN_HOST}
+    entrypoint: java -Xms128M -Xmx128M -jar product-${APP_VERSION}.jar
   miniapp:
     image: java:8
     container_name: ozcowms-miniapp
+    environment:
+      - NACOS_HOST=${NACOS_HOST}
+      - ZIPKIN_URL=${ZIPKIN_URL}
     volumes:
-      - ./apps/miniapp-${APP_VERSION}.jar:/root/miniapp-${APP_VERSION}.jar
+      - ./dist/apps/miniapp-${APP_VERSION}.jar:/root/miniapp-${APP_VERSION}.jar
     working_dir: /root
+    depends_on:
+      - zipkin
+      - nacos
     networks:
       - ozcowms
-    entrypoint: java -Xms256M -Xmx256M -jar miniapp-${APP_VERSION}.jar --nacos.host=${NACOS_HOST} --spring.zipkin.base-url=${ZIPKIN_HOST}
+    entrypoint: java -Xms128M -Xmx128M -jar miniapp-${APP_VERSION}.jar
   gateway:
     image: java:8
     container_name: ozcowms-gateway
+    environment:
+      - NACOS_HOST=${NACOS_HOST}
+      - REDIS_HOST=${REDIS_DB_HOST}
+      - ZIPKIN_URL=${ZIPKIN_URL}
     volumes:
-      - ./apps/gateway-${APP_VERSION}.jar:/root/gateway-${APP_VERSION}.jar
+      - ./dist/apps/gateway-${APP_VERSION}.jar:/root/gateway-${APP_VERSION}.jar
     ports:
       - 8080:8080
     working_dir: /root
     networks:
       - ozcowms
-    entrypoint: java -Xms256M -Xmx256M -jar gateway-${APP_VERSION}.jar --spring.redis.host=${REDIS_DB_HOST} --nacos.host=${NACOS_HOST} --spring.zipkin.base-url=${ZIPKIN_HOST}
+    depends_on:
+      - redis
+      - zipkin
+      - nacos
+    entrypoint: java -Xms128M -Xmx128M -jar gateway-${APP_VERSION}.jar
 networks:
   ozcowms:
     driver: bridge
